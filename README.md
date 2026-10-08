@@ -165,19 +165,7 @@ npm run typecheck    # TypeScript
 npm run tauri build
 ```
 
-Tauri can only build installers for the OS it runs on. Output goes to `src-tauri/target/release/bundle/`:
-
-| OS | Files |
-|---|---|
-| Windows | `msi/*.msi`, `nsis/*-setup.exe` |
-| macOS | `macos/*.app`, `dmg/*.dmg` |
-| Linux | `deb/*.deb`, `rpm/*.rpm`, `appimage/*.AppImage` |
-
-The Windows bundler downloads WiX and NSIS automatically the first time.
-
-To get installers for all three platforms without owning each OS, use GitHub Actions (`.github/workflows/release.yml`):
-- Push a tag such as `git tag v0.1.0 && git push origin v0.1.0` to create a draft GitHub release with every installer attached.
-- Or run the workflow manually from the *Actions* tab.
+This produces installers for the current OS. See [Releasing a new version](#releasing-a-new-version) for where they land and how to hand them out.
 
 ### Troubleshooting
 
@@ -196,6 +184,113 @@ To get installers for all three platforms without owning each OS, use GitHub Act
 `npm run dev` runs the UI in a normal browser at http://localhost:1420 without Rust. This is handy for UI work.
 
 A browser cannot read neighbouring files on its own, so pick or drop the model **together with** its textures and `.mtl`.
+
+## Releasing a new version
+
+Use this checklist every time you want to give people a new build. The result is an installer you copy to another computer and double-click. That machine needs nothing else installed: no Node, Rust or Visual Studio.
+
+### 1. Bump the version
+
+Use the same number (e.g. `0.2.0`) in all three files:
+
+| File | Field |
+|---|---|
+| `src-tauri/tauri.conf.json` | `"version"` (this is the version shown to Windows and in the installer name) |
+| `package.json` | `"version"` |
+| `src-tauri/Cargo.toml` | `version` under `[package]` |
+
+Windows uses this number to treat a new installer as an **update**. Installing a higher version over an older one replaces it in place. Installing the same or a lower version asks the user whether to reinstall or downgrade.
+
+### 2. Check before building
+
+```bash
+npm run typecheck
+npm test
+```
+
+### 3. Build
+
+```bash
+npm run tauri build
+```
+
+- It takes about 3–5 minutes because it is an optimised release build.
+- The first build on a machine also downloads WiX and NSIS automatically.
+- Tauri only builds for the OS it runs on. Output goes to `src-tauri/target/release/bundle/`:
+
+| OS | File to hand out | Other outputs |
+|---|---|---|
+| Windows | `nsis/3D Model Viewer_<version>_x64-setup.exe` (≈2 MB) | `msi/3D Model Viewer_<version>_x64_en-US.msi` |
+| macOS | `dmg/3D Model Viewer_<version>_<arch>.dmg` | `macos/3D Model Viewer.app` |
+| Linux | `appimage/*.AppImage` (runs on most distros) | `deb/*.deb`, `rpm/*.rpm` |
+
+Which Windows file to use:
+- **`-setup.exe` (NSIS)** is the one to share with people. Double-click, Next, done. It needs no admin rights, creates Start-menu and desktop shortcuts, and comes with an uninstaller.
+- **`.msi`** is for IT departments deploying with Group Policy or Intune. It needs admin rights.
+
+The bare `src-tauri/target/release/model-viewer.exe` also runs on its own, but only on machines that already have WebView2. The installer is the safer option.
+
+### 4. Commit and tag
+
+```bash
+git add -A
+git commit -m "chore: release v0.2.0"
+git tag v0.2.0
+git push origin HEAD --tags
+```
+
+Pushing a `v*` tag also triggers the GitHub Actions workflow (`.github/workflows/release.yml`):
+- It builds Windows, macOS (Apple Silicon + Intel) and Linux installers.
+- It attaches them all to a **draft** GitHub release.
+- Open *Releases* on GitHub, check the draft and click *Publish*.
+
+You can also run the workflow manually from the *Actions* tab and download the installers from the run's artifacts. This is the easiest way to get macOS and Linux builds without owning those machines.
+
+### 5. Hand out the installer
+
+Copy the file (USB, shared drive, chat, or the GitHub release link) to the other computer and open it.
+
+What users will see:
+
+| OS | What happens | What to tell users |
+|---|---|---|
+| Windows | *"Windows protected your PC"* (SmartScreen), because the installer is not code-signed | Click **More info → Run anyway**. |
+| Windows 10 without WebView2 | The installer downloads WebView2 during setup | The machine needs internet while installing (see *Offline installs* below). Windows 11 already has WebView2. |
+| macOS | *"cannot be opened because the developer cannot be verified"* (Gatekeeper) | Right-click the app → **Open** → **Open**. Or run `xattr -dr com.apple.quarantine "/Applications/3D Model Viewer.app"`. |
+| Linux (AppImage) | The file is not executable after download | Run `chmod +x 3D*.AppImage`, then double-click it or run it from a terminal. |
+
+To uninstall:
+- Windows: *Settings → Apps → 3D Model Viewer → Uninstall*.
+- macOS: drag the app to the Trash.
+- Linux: remove the package or delete the AppImage.
+
+### Optional: offline installs (bundle WebView2)
+
+Machines without internet and without WebView2 (some Windows 10 PCs) can't finish the default installer. To ship WebView2 inside the installer, add this to `src-tauri/tauri.conf.json` under `"bundle"`, then rebuild:
+
+```json
+"windows": {
+  "webviewInstallMode": { "type": "offlineInstaller" }
+}
+```
+
+This makes the installer about 130 MB larger. Other modes are `downloadBootstrapper` (the default, smallest), `embedBootstrapper` (adds about 2 MB, still needs internet) and `skip`.
+
+### Optional: remove the security warnings (code signing)
+
+The SmartScreen and Gatekeeper warnings only go away with signed installers:
+- **Windows:** buy a code-signing certificate (OV or EV) from a certificate authority. Configure it under `bundle.windows` (`certificateThumbprint`, `digestAlgorithm`, `timestampUrl`) or with Azure Trusted Signing.
+- **macOS:** join the Apple Developer Program, sign with a *Developer ID Application* certificate, then notarize.
+
+Both can be wired into the GitHub Actions workflow with repository secrets. See [Tauri: Windows code signing](https://tauri.app/distribute/sign/windows/) and [Tauri: macOS code signing](https://tauri.app/distribute/sign/macos/).
+
+### Optional: other targets
+
+- **Windows on ARM:**
+  1. In *Visual Studio Installer*, add the "MSVC ARM64 build tools" component.
+  2. Run `rustup target add aarch64-pc-windows-msvc`.
+  3. Build with `npm run tauri build -- --target aarch64-pc-windows-msvc`.
+- **32-bit Windows:** not supported. WebView2 and modern GPUs make it impractical.
 
 ## Localization
 
