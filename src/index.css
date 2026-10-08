@@ -1,0 +1,133 @@
+@import "@fontsource-variable/inter";
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------ design tokens */
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0d0f13;
+  --panel: #14171d;
+  --panel-2: #1a1e26;
+  --hover: #222833;
+  --border: #262c37;
+  --fg: #e7eaf0;
+  --muted: #8a93a3;
+  --subtle: #5d6575;
+  --accent: #3b82f6;
+  --accent-soft: rgba(59, 130, 246, 0.16);
+  --accent-fg: #ffffff;
+  --warn: #f59e0b;
+  --danger: #ef4444;
+  --success: #22c55e;
+  --viewport-top: #2a303b;
+  --viewport-bottom: #101317;
+  --shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #eef0f4;
+  --panel: #ffffff;
+  --panel-2: #f6f7f9;
+  --hover: #eceef2;
+  --border: #e0e3e9;
+  --fg: #151922;
+  --muted: #646d7d;
+  --subtle: #9aa2b1;
+  --accent: #2563eb;
+  --accent-soft: rgba(37, 99, 235, 0.12);
+  --accent-fg: #ffffff;
+  --viewport-top: #f7f8fa;
+  --viewport-bottom: #d5d9e1;
+  --shadow: 0 8px 30px rgba(15, 23, 42, 0.12);
+}
+
+@theme inline {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --color-bg: var(--bg);
+  --color-panel: var(--panel);
+  --color-panel-2: var(--panel-2);
+  --color-hover: var(--hover);
+  --color-line: var(--border);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-subtle: var(--subtle);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-fg: var(--accent-fg);
+  --color-warn: var(--warn);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --shadow-float: var(--shadow);
+}
+
+/* ------------------------------------------------------------------ base */
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  overflow: hidden;
+}
+
+button {
+  cursor: default;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.viewport-bg {
+  background: radial-gradient(ellipse at 50% 30%, var(--viewport-top), var(--viewport-bottom) 75%);
+}
+
+.checker {
+  background-color: #2b2f37;
+  background-image:
+    linear-gradient(45deg, #3a3f49 25%, transparent 25%),
+    linear-gradient(-45deg, #3a3f49 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #3a3f49 75%),
+    linear-gradient(-45deg, transparent 75%, #3a3f49 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+}
+
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: none; }
+}
+.animate-fade-in {
+  animation: fade-in 150ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
