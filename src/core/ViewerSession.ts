@@ -129,6 +129,7 @@ export class ViewerSession implements Renderable {
       });
       if (model.clips.length) {
         this.animation = new AnimationController(model.root, model.clips);
+        this.animation.invalidate.subscribe(this.rm.requestRender);
       }
 
       const materials: Material[] = [];

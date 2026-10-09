@@ -42,6 +42,11 @@ export function estimateFps(clip: AnimationClip): number {
 export class AnimationController {
   readonly changed = new Signal();
   readonly tick = new Signal();
+  /**
+   * Fires when something happens outside the render loop (play, seek, clip switch...). The loop
+   * goes idle once the pose stops changing, so the owner must use this to wake it up again.
+   */
+  readonly invalidate = new Signal();
   readonly mixer: AnimationMixer;
 
   private action: AnimationAction | null = null;
@@ -144,6 +149,7 @@ export class AnimationController {
     a.time = Math.min(Math.max(time, 0), duration);
     this.mixer.update(0);
     this.tick.emit();
+    this.invalidate.emit();
   }
 
   step(frames: number): void {
@@ -185,5 +191,6 @@ export class AnimationController {
   private set(patch: Partial<AnimationState>) {
     this._state = { ...this._state, ...patch };
     this.changed.emit();
+    this.invalidate.emit();
   }
 }
